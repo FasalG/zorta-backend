@@ -26,6 +26,27 @@ export const createCategory = async (req, res) => {
     }
 };
 
+// @desc    Create multiple categories
+// @route   POST /api/categories/bulk
+export const createBulkCategories = async (req, res) => {
+    try {
+        const categories = req.body;
+        if (!Array.isArray(categories) || categories.length === 0) {
+            return res.status(400).json({ message: 'Request body must be a non-empty array of categories' });
+        }
+
+        const categoriesWithUser = categories.map(category => ({
+            ...category,
+            user: req.user._id
+        }));
+
+        const insertedCategories = await Category.insertMany(categoriesWithUser);
+        res.status(201).json(insertedCategories);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
 // @desc    Update a category
 // @route   PUT /api/categories/:id
 export const updateCategory = async (req, res) => {

@@ -26,6 +26,27 @@ export const createItem = async (req, res) => {
     }
 };
 
+// @desc    Create multiple items
+// @route   POST /api/items/bulk
+export const createBulkItems = async (req, res) => {
+    try {
+        const items = req.body;
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ message: 'Request body must be a non-empty array of items' });
+        }
+
+        const itemsWithUser = items.map(item => ({
+            ...item,
+            user: req.user._id
+        }));
+
+        const insertedItems = await RentalItem.insertMany(itemsWithUser);
+        res.status(201).json(insertedItems);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
 // @desc    Update an item
 // @route   PUT /api/items/:id
 export const updateItem = async (req, res) => {
