@@ -26,7 +26,7 @@ export const createItem = async (req, res) => {
     }
 };
 
-// @desc    Create multiple items
+// @desc    Create multiple items (with upsert for duplicates)
 // @route   POST /api/items/bulk
 export const createBulkItems = async (req, res) => {
     try {
@@ -35,12 +35,29 @@ export const createBulkItems = async (req, res) => {
             return res.status(400).json({ message: 'Request body must be a non-empty array of items' });
         }
 
-        const itemsWithUser = items.map(item => ({
-            ...item,
-            user: req.user._id
-        }));
+        const operations = items.map(item => {
+            // Remove _id if it was accidentally included in the bulk payload so it doesn't try to alter immutable _id
+            const itemObj = { ...item };
+            delete itemObj._id;
 
-        const insertedItems = await RentalItem.insertMany(itemsWithUser);
+            return {
+                updateOne: {
+                    filter: { sku: item.sku, user: req.user._id },
+                    update: { $set: { ...itemObj, user: req.user._id } },
+                    upsert: true
+                }
+            };
+        });
+
+        const result = await RentalItem.bulkWrite(operations);
+
+        // Fetch and return the updated/inserted items
+        const itemSkus = items.map(i => i.sku);
+        const insertedItems = await RentalItem.find({
+            user: req.user._id,
+            sku: { $in: itemSkus }
+        }).populate('category');
+
         res.status(201).json(insertedItems);
     } catch (error) {
         res.status(400).json({ message: error.message });

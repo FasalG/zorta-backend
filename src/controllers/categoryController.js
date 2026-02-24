@@ -26,7 +26,7 @@ export const createCategory = async (req, res) => {
     }
 };
 
-// @desc    Create multiple categories
+// @desc    Create multiple categories (with upsert for duplicates)
 // @route   POST /api/categories/bulk
 export const createBulkCategories = async (req, res) => {
     try {
@@ -35,12 +35,23 @@ export const createBulkCategories = async (req, res) => {
             return res.status(400).json({ message: 'Request body must be a non-empty array of categories' });
         }
 
-        const categoriesWithUser = categories.map(category => ({
-            ...category,
-            user: req.user._id
+        const operations = categories.map(category => ({
+            updateOne: {
+                filter: { name: category.name, user: req.user._id },
+                update: { $set: { ...category, user: req.user._id } },
+                upsert: true
+            }
         }));
 
-        const insertedCategories = await Category.insertMany(categoriesWithUser);
+        const result = await Category.bulkWrite(operations);
+
+        // Fetch and return the updated/inserted categories
+        const categoryNames = categories.map(c => c.name);
+        const insertedCategories = await Category.find({
+            user: req.user._id,
+            name: { $in: categoryNames }
+        });
+
         res.status(201).json(insertedCategories);
     } catch (error) {
         res.status(400).json({ message: error.message });
