@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const rentalItemSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    sku: { type: String, required: true, unique: true },
+    sku: { type: String, required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
     total_quantity: { type: Number, required: true },
@@ -17,6 +17,9 @@ const rentalItemSchema = new mongoose.Schema({
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
 });
+
+// Create a compound index so that SKUs are only uniquely constrained PER USER
+rentalItemSchema.index({ user: 1, sku: 1 }, { unique: true });
 
 rentalItemSchema.virtual('id').get(function () {
     return this._id.toHexString();
