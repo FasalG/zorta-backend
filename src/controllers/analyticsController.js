@@ -1,4 +1,3 @@
-import Rental from '../models/Rental.js';
 import Expense from '../models/Expense.js';
 import RentalItem from '../models/RentalItem.js';
 import Booking from '../models/Booking.js';
@@ -9,18 +8,20 @@ export const getStats = async (req, res) => {
     try {
         const userId = req.user._id;
 
-        const totalRevenue = await Rental.aggregate([
-            { $match: { user: userId } },
-            { $group: { _id: null, total: { $sum: '$total_amount' } } }
+        const totalRevenue = await Booking.aggregate([
+            { $match: { user: userId, status: { $ne: 'cancelled' } } },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
 
-        const activeRentalsCount = await Rental.countDocuments({ status: 'active', user: userId });
+        const activeRentalsCount = await Booking.countDocuments({ status: 'active', user: userId });
 
         const totalItems = await RentalItem.aggregate([
             { $match: { user: userId } },
             { $group: { _id: null, total: { $sum: '$total_quantity' } } }
         ]);
 
+        // Note: available_quantity is now primarily for initial state/fallback 
+        // as frontend calculates availability dynamically.
         const availableItems = await RentalItem.aggregate([
             { $match: { user: userId } },
             { $group: { _id: null, total: { $sum: '$available_quantity' } } }
@@ -50,9 +51,9 @@ export const getStats = async (req, res) => {
 // @route   GET /api/analytics/recent
 export const getRecentActivities = async (req, res) => {
     try {
-        const recentRentals = await Rental.find({ user: req.user._id })
+        const recentRentals = await Booking.find({ user: req.user._id })
             .populate('customer', 'name')
-            .populate('item', 'name')
+            .populate('items.item', 'name')
             .sort({ createdAt: -1 })
             .limit(5);
 

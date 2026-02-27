@@ -9,11 +9,11 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
-import rentalRoutes from './routes/rentalRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import maintenanceRoutes from './routes/maintenanceRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
+import bankDetailRoutes from './routes/bankDetailRoutes.js';
 
 // Load env vars
 dotenv.config();
@@ -42,11 +42,11 @@ app.use('/api/categories', protect, categoryRoutes);
 app.use('/api/customers', protect, customerRoutes);
 app.use('/api/items', protect, inventoryRoutes);
 app.use('/api/bookings', protect, bookingRoutes);
-app.use('/api/rentals', protect, rentalRoutes);
 app.use('/api/expenses', protect, expenseRoutes);
 app.use('/api/maintenance', protect, maintenanceRoutes);
 app.use('/api/analytics', protect, analyticsRoutes);
 app.use('/api/invoices', protect, invoiceRoutes);
+app.use('/api/bank-details', protect, bankDetailRoutes);
 
 
 // Error handler

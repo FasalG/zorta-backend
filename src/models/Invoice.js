@@ -4,7 +4,7 @@ const invoiceSchema = new mongoose.Schema({
     invoice_number: { type: String, required: true, unique: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
-    rental: { type: mongoose.Schema.Types.ObjectId, ref: 'Rental', required: true },
+    booking: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true },
     base_amount: { type: Number, required: true },
     gst_percentage: { type: Number, default: 18 },
     gst_amount: { type: Number, required: true },

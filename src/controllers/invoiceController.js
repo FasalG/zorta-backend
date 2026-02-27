@@ -5,7 +5,7 @@ import Payment from '../models/Payment.js';
 // @route   GET /api/invoices
 export const getInvoices = async (req, res) => {
     try {
-        const invoices = await Invoice.find({ user: req.user._id }).populate('customer').populate('rental');
+        const invoices = await Invoice.find({ user: req.user._id }).populate('customer').populate('booking');
         res.status(200).json(invoices);
     } catch (error) {
         res.status(500).json({ message: error.message });

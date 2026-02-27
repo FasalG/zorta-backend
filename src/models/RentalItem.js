@@ -6,11 +6,11 @@ const rentalItemSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
     total_quantity: { type: Number, required: true },
-    available_quantity: { type: Number, required: true },
+    available_quantity: { type: Number, default: function () { return this.total_quantity; } },
     daily_rate: { type: Number, required: true },
     weekly_rate: { type: Number, required: true },
     condition: { type: String, enum: ['excellent', 'good', 'fair', 'poor'], required: true },
-    status: { type: String, enum: ['available', 'partial', 'rented', 'maintenance'], required: true },
+    status: { type: String, enum: ['available', 'partial', 'rented', 'maintenance'], default: 'available' },
     description: { type: String, default: '' },
 }, {
     timestamps: true,
