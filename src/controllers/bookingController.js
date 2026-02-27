@@ -1,6 +1,7 @@
 import Booking from '../models/Booking.js';
 import Maintenance from '../models/Maintenance.js';
 import RentalItem from '../models/RentalItem.js';
+import PDFDocument from 'pdfkit';
 
 // Helper to check availability for multiple items
 const checkAvailability = async (items, startDate, endDate, excludeBookingId = null, userId) => {
@@ -176,5 +177,124 @@ export const deleteBooking = async (req, res) => {
         res.status(200).json({ message: 'Booking deleted' });
     } catch (error) {
         res.status(400).json({ message: error.message });
+    }
+};
+
+// @desc    Generate an invoice PDF
+// @route   GET /api/bookings/:id/invoice
+export const generateInvoice = async (req, res) => {
+    try {
+        const booking = await Booking.findOne({ _id: req.params.id, user: req.user._id })
+            .populate('customer')
+            .populate('items.item');
+
+        if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+        const doc = new PDFDocument({ margin: 50 });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="Invoice-${booking.booking_number}.pdf"`);
+        doc.pipe(res);
+
+        // Header
+        doc.fontSize(20).font('Helvetica-Bold').text('INVOICE', { align: 'center' }).moveDown();
+
+        // Customer Details
+        doc.fontSize(12).font('Helvetica-Bold').text('Bill To:').font('Helvetica');
+        doc.text(`Name: ${booking.customer.name}`);
+        doc.text(`Email: ${booking.customer.email}`);
+        doc.text(`Phone: ${booking.customer.phone}`).moveDown();
+
+        // Booking Info
+        doc.font('Helvetica-Bold').text('Booking Information:').font('Helvetica');
+        doc.text(`Booking Number: ${booking.booking_number}`);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`);
+        doc.text(`Rental Period: ${new Date(booking.start_date).toLocaleDateString()} to ${new Date(booking.end_date).toLocaleDateString()}`).moveDown(2);
+
+        // Table Header
+        let y = doc.y;
+        doc.font('Helvetica-Bold');
+        doc.text('Item', 50, y);
+        doc.text('Qty', 250, y);
+        doc.text('Rate/Day', 350, y);
+        doc.text('Total', 450, y);
+        doc.moveTo(50, y + 15).lineTo(500, y + 15).stroke();
+        doc.font('Helvetica');
+        y += 25;
+
+        // Items
+        for (const i of booking.items) {
+            doc.text(i.item.name, 50, y);
+            doc.text(i.quantity.toString(), 250, y);
+            doc.text(`Rs. ${i.rate}`, 350, y);
+            doc.text(`Rs. ${i.rate * i.quantity * booking.duration_days}`, 450, y);
+            y += 20;
+        }
+
+        doc.moveTo(50, y).lineTo(500, y).stroke();
+        y += 15;
+
+        // Total
+        doc.font('Helvetica-Bold');
+        doc.text(`Total Duration: ${booking.duration_days} Days`, 50, y);
+        doc.text(`Total Amount: Rs. ${booking.amount}`, 350, y);
+
+        if (booking.initial_payment_received > 0) {
+            y += 20;
+            doc.text(`Initial Payment Received: Rs. ${booking.initial_payment_received}`, 350, y);
+            y += 20;
+            doc.text(`Amount Due: Rs. ${booking.amount - booking.initial_payment_received}`, 350, y);
+        }
+
+        doc.end();
+
+    } catch (error) {
+        if (!res.headersSent) res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Generate a cash receipt PDF
+// @route   GET /api/bookings/:id/receipt
+export const generateReceipt = async (req, res) => {
+    try {
+        const booking = await Booking.findOne({ _id: req.params.id, user: req.user._id })
+            .populate('customer');
+
+        if (!booking) return res.status(404).json({ message: 'Booking not found' });
+        if (booking.initial_payment_received <= 0) return res.status(400).json({ message: 'No initial payment received' });
+
+        const doc = new PDFDocument({ margin: 50 });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="Receipt-${booking.booking_number}.pdf"`);
+        doc.pipe(res);
+
+        // Header
+        doc.fontSize(20).font('Helvetica-Bold').text('CASH RECEIPT', { align: 'center' }).moveDown();
+
+        doc.fontSize(12).font('Helvetica').text(`Date: ${new Date().toLocaleDateString()}`, { align: 'right' }).moveDown(2);
+
+        doc.font('Helvetica-Bold').text('Received From: ', { continued: true }).font('Helvetica').text(booking.customer.name);
+        doc.text(`Email: ${booking.customer.email}`).moveDown();
+
+        doc.text('The sum of: ', { continued: true }).font('Helvetica-Bold').text(`Rs. ${booking.initial_payment_received}`).font('Helvetica').moveDown();
+
+        doc.font('Helvetica-Bold').text('For Payment Of:').font('Helvetica');
+        doc.text(`Booking Reference: ${booking.booking_number}`);
+        doc.text(`Rental Period: ${new Date(booking.start_date).toLocaleDateString()} to ${new Date(booking.end_date).toLocaleDateString()}`);
+        doc.text(`Payment Method: ${booking.payment_method.toUpperCase()}`).moveDown(2);
+
+        doc.moveTo(50, doc.y).lineTo(500, doc.y).stroke().moveDown();
+
+        doc.font('Helvetica-Bold');
+        doc.text(`Total Booking Amount: Rs. ${booking.amount}`);
+        doc.text(`Balance Due: Rs. ${booking.amount - booking.initial_payment_received}`).moveDown(3);
+
+        doc.font('Helvetica').text('Authorized Signature: _______________________');
+
+        doc.end();
+
+    } catch (error) {
+        if (!res.headersSent) res.status(500).json({ message: error.message });
     }
 };
